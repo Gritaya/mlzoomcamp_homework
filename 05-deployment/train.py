@@ -3,6 +3,7 @@
 
 # In[18]:
 
+import pickle
 
 import pandas as pd
 import numpy as np
@@ -18,13 +19,16 @@ from sklearn.metrics import roc_auc_score
 # In[19]:
 
 
-data = 'https://raw.githubusercontent.com/alexeygrigorev/mlbookcamp-code/master/chapter-03-churn-prediction/WA_Fn-UseC_-Telco-Customer-Churn.csv'
+# data = 'https://raw.githubusercontent.com/alexeygrigorev/mlbookcamp-code/master/chapter-03-churn-prediction/WA_Fn-UseC_-Telco-Customer-Churn.csv'
 
-get_ipython().system('wget $data -O data-week-3.csv')
+# get_ipython().system('wget $data -O data-week-3.csv')
 
 
 # In[20]:
 
+# parameters
+C = 1.0
+n_splits = 5
 
 df = pd.read_csv('data-week-3.csv')
 # print(df.head())
@@ -113,17 +117,8 @@ def predict(df, dv, model):
     return y_pred
 
 
-# In[27]:
-
-
-df_full_train.nunique()
-
-
 # In[28]:
-
-
-C = 1.0
-n_splits = 5
+print("Training with KFold cross-validation...")
 
 kfold = KFold(n_splits=n_splits, shuffle=True, random_state=1)
 
@@ -140,15 +135,13 @@ for train_idx, val_idx in kfold.split(df_full_train):
     y_pred = predict(df_val, dv, model)
 
     auc = roc_auc_score(y_val, y_pred)
+    print("Fold %d AUC: %.3f" % (len(scores) + 1, auc))
     scores.append(auc)
 
 print('C=%s %.3f +- %.3f' % (C, np.mean(scores), np.std(scores)))
 
 
 # In[29]:
-
-
-scores
 
 
 # In[30]:
@@ -159,17 +152,15 @@ y_pred = predict(df_test, dv, model)
 
 y_test = df_test.churn.values
 auc = roc_auc_score(y_test, y_pred)
-auc
+print('test auc %.3f' % auc)
 
 
 # In[33]:
 
 
 ## 5.2 Saving and loading model ##
-import pickle
 output_file = f'model_C={C}.bin'
-output_file
-
+# output_file
 
 # In[36]:
 
@@ -178,107 +169,5 @@ f_out = open(output_file, 'wb') # bytes
 pickle.dump((dv, model), f_out)
 f_out.close()
 
-
-# In[37]:
-
-
-with open(output_file, 'wb') as f_out: 
-    pickle.dump((dv, model), f_out)
-
-
-# In[39]:
-
-
-with open(output_file, 'rb') as f_in:
-    dv, model = pickle.load(f_in)
-dv, model
-
-
-# In[41]:
-
-
-customer = {
-    'gender': 'female',
-    'seniorcitizen': 0,
-    'partner': 'yes',
-    'dependents': 'no',
-    'phoneservice': 'no',
-    'multiplelines': 'no_phone_service',
-    'internetservice': 'dsl',
-    'onlinesecurity': 'no',
-    'onlinebackup': 'yes',
-    'deviceprotection': 'no',
-    'techsupport': 'no',
-    'streamingtv': 'no',
-    'streamingmovies': 'no',
-    'contract': 'month-to-month',
-    'paperlessbilling': 'yes',
-    'paymentmethod': 'electronic_check',
-    'tenure': 1,
-    'monthlycharges': 29.85,
-    'totalcharges': 29.85
-}
-
-
-# In[42]:
-
-
-X = dv.transform([customer])
-y_pred = model.predict_proba(X)[0, 1]
-
-X, y_pred
-
-
-# In[ ]:
-
-
-print('input:', customer)
-print('output:', y_pred)
-
-
-# In[ ]:
-
-
-import requests
-url = 'http://localhost:9696/predict'
-
-
-# In[ ]:
-
-
-customer = {
-    'gender': 'female',
-    'seniorcitizen': 0,
-    'partner': 'yes',
-    'dependents': 'no',
-    'phoneservice': 'no',
-    'multiplelines': 'no_phone_service',
-    'internetservice': 'dsl',
-    'onlinesecurity': 'no',
-    'onlinebackup': 'yes',
-    'deviceprotection': 'no',
-    'techsupport': 'no',
-    'streamingtv': 'no',
-    'streamingmovies': 'no',
-    'contract': 'two_year',
-    'paperlessbilling': 'yes',
-    'paymentmethod': 'electronic_check',
-    'tenure': 1,
-    'monthlycharges': 29.85,
-    'totalcharges': 29.85
-}
-
-
-# In[ ]:
-
-
-response = requests.post(url, json=customer).json()
-response
-
-
-# In[ ]:
-
-
-if response['churn']:
-    print('sending email to', 'asdx-123d')
+print(f'Model saved to {output_file}')
 
